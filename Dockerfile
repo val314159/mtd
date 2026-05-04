@@ -1,12 +1,6 @@
 # Use official Alpine image as base
 FROM alpine:latest
 
-# Install tini and required packages
-##RUN apk add --no-cache \ 
-#    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \ 
-#    tini nginx postgresql-client postgresql-server python3 py3-pip \ 
-#    python3-dev build-base libc6-compat
-
 #RUN apk add --no-cache \ 
 #    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \ 
 #RUN apk add --no-cache \ 
@@ -38,20 +32,31 @@ RUN pip install --break-system-packages \
 
 # Set PostgreSQL environment variables
 ENV POSTGRES_USER=myuser
-ENV POSTGRES_PXASSWORD=mypassword
+ENV POSTGRES_PASSWORD=mypassword
 ENV POSTGRES_DB=mydatabase
 
+#ENV PGUSER=postgres
+ENV PGDATA=/var/lib/postgresql/data
+ENV PGHOST=127.0.0.1
+ENV PGPORT=5432
+
 # Configure PostgreSQL (minimal setup)
-RUN mkdir -p                   /var/lib/postgresql/data
-RUN chown -R postgres:postgres /var/lib/postgresql/data
-RUN su postgres -c "initdb -D  /var/lib/postgresql/data"
-# Copy launch.sh and make executable
-#COPY launch.sh /app/launch.sh
-#RUN chmod +x /app/launch.sh
+RUN mkdir -p /var/run/postgresql /var/lib/postgresql/data \
+    && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data \
+    && su postgres -c "initdb -D /var/lib/postgresql/data" \
+    && su postgres -c "pg_ctl -D '$PGDATA' -w -l /tmp/postgres.log -o '-c listen_addresses=$PGHOST -p $PGPORT' start" \
+    && psql -U postgres -c "CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';" \
+    && psql -U postgres -c "CREATE DATABASE $POSTGRES_DB OWNER $POSTGRES_USER;" \
+    && su postgres -c "pg_ctl -D '$PGDATA' -m fast stop"
 
 # Copy application code and configuration files
 COPY  . /app
 WORKDIR /app
+
+RUN mkdir -p /docker-entrypoint-initdb.d/
+RUN cp sql/* /docker-entrypoint-initdb.d/
+
+RUN echo 'alias ll="ls -la"' >/root/.profile
 
 # Start services using tini
 ENTRYPOINT ["/sbin/tini"]

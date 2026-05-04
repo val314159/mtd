@@ -1,8 +1,12 @@
-D=-w`pwd` -v`pwd`:`pwd`
+D=--name mtd -w`pwd` -v`pwd`:`pwd`
 
 dev:
 	docker build -t mtd .
 	docker run --rm -it $D mtd
+
+sh:
+	docker build -t mtd .
+	docker run --rm -it $D mtd sh --login
 
 all:
 	python core.py
