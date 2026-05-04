@@ -24,12 +24,9 @@ if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
 fi
 
 # Start Nginx
-#nginx -g 'daemon off; listen 8080;'
-su nginx -s /bin/sh -c "nginx -g 'daemon off;'" &
+nginx -g 'daemon off;' &
 
-# Start Celery worker with PostgreSQL backend
-DB_URL="postgresql+psycopg2://$PGUSER@$PGHOST:$PGPORT/$PGDATABASE"
-celery -A your_app \
-    --broker="sqla+$DB_URL" \
-    --result-backend="db+$DB_URL" \
-    worker --loglevel=info
+# Start Celery worker
+#celery -A your_app worker --loglevel=info
+#su app -s /bin/sh -c 'celery -A your_app worker --loglevel=info'
+su app -c 'celery -A your_app worker --loglevel=info'

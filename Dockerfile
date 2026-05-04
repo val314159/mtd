@@ -7,20 +7,19 @@ FROM alpine:latest
 #    tini nginx postgresql-client postgresql-server python3 py3-pip \
 #RUN apk add --no-cache \
 #    python3-dev build-base libc6-compat
-
 #RUN apk update && apk upgrade
 #RUN apk add postgresql postgresql-contrib postgresql-client postgresql-dev
 
 RUN apk add --no-cache \
-    tini nginx
-
-RUN apk add --no-cache \
-    python3 py3-pip
+    tini nginx \
+    python3 py3-pip \
+    postgresql postgresql-contrib postgresql-client
+    
+#RUN apk add --no-cache \
+#    python3 py3-pip
 #    python3-dev build-base libc6-compat python3 py3-pip
-
-RUN apk add --no-cache \
-    postgresql postgresql-contrib postgresql-client # postgresql-dev
-
+#RUN apk add --no-cache \
+#    postgresql postgresql-contrib postgresql-client # postgresql-dev
 #RUN apk add --no-cache \
 #    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
 #    tini nginx postgresql-client postgresql-server python3 py3-pip \
@@ -31,6 +30,8 @@ RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
 
 RUN echo 'alias ll="ls -la"' >/root/.profile
+
+RUN adduser -D -h /app app
 
 ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
@@ -59,11 +60,11 @@ RUN mkdir -p /run/nginx /var/lib/nginx /var/log/nginx \
 # Configure PostgreSQL (minimal setup)
 RUN mkdir -p /var/run/postgresql /var/lib/postgresql/data \
     && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data
-#    && su postgres -c "initdb -D /var/lib/postgresql/data"
 
 # Copy application code and configuration files
 COPY  . /app
 WORKDIR /app
+RUN chown -R app:app /app
 
 RUN mkdir -p /docker-entrypoint-initdb.d/
 RUN cp sql/* /docker-entrypoint-initdb.d/
