@@ -14,9 +14,6 @@ FROM alpine:latest
 RUN apk add --no-cache \
     tini nginx
 
-RUN sed -i 's/listen 80 default_server;/listen 8080 default_server;/' /etc/nginx/http.d/default.conf \
-    && sed -i 's/listen \\[::\\]:80 default_server;/listen [::]:8080 default_server;/' /etc/nginx/http.d/default.conf
-
 RUN apk add --no-cache \
     python3 py3-pip
 #    python3-dev build-base libc6-compat python3 py3-pip
@@ -31,9 +28,11 @@ RUN apk add --no-cache \
 
 # Install Python dependencies
 RUN pip install --break-system-packages \
-    celery psycopg2-binary kombu
+    celery psycopg2-binary kombu sqlalchemy
 
 RUN echo 'alias ll="ls -la"' >/root/.profile
+
+ARG NGINX_PORT=8080
 
 # Set PostgreSQL environment variables
 ARG POSTGRES_USER=myuser
@@ -46,6 +45,12 @@ ENV PGHOST=127.0.0.1
 ENV PGPORT=5432
 ENV PGUSER=$POSTGRES_USER
 ENV PGDATABASE=$POSTGRES_DB
+
+RUN sed -i -E "s/listen[[:space:]]+[0-9]+/listen ${NGINX_PORT}/" /etc/nginx/http.d/default.conf \
+    && sed -i -E "s/listen[[:space:]]+\\[::\\]:[0-9]+/listen [::]:${NGINX_PORT}/" /etc/nginx/http.d/default.conf
+
+RUN mkdir -p /run/nginx /var/lib/nginx /var/log/nginx \
+    && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 
 # Configure PostgreSQL (minimal setup)
 RUN mkdir -p /var/run/postgresql /var/lib/postgresql/data \
@@ -64,4 +69,4 @@ ENTRYPOINT ["/sbin/tini"]
 CMD ["/app/launch.sh"]
 
 # Expose ports
-EXPOSE 8080 443 5432
+EXPOSE 8080 1443 5432
