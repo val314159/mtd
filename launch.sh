@@ -1,6 +1,13 @@
 #!/bin/sh
 set -eu
 
+# Does the Postgres cluster exist?
+if [ ! -s "$PGDATA/PG_VERSION" ]; then
+    mkdir -p "$PGDATA"
+    chown -R postgres:postgres "$PGDATA"
+    su postgres -c "initdb -D '$PGDATA'"
+fi
+
 # Start PostgreSQL
 su postgres -c "pg_ctl -D '$PGDATA' -w -l /var/lib/postgresql/logfile -o '-c listen_addresses=$PGHOST -p $PGPORT' start"
 

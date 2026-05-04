@@ -32,7 +32,9 @@ RUN pip install --break-system-packages \
 
 RUN echo 'alias ll="ls -la"' >/root/.profile
 
-ARG NGINX_PORT=8080
+ARG NGINX_HTTP_PORT=8080
+ARG NGINX_HTTPS_PORT=1443
+ARG POSTGRES_PORT=5432
 
 # Set PostgreSQL environment variables
 ARG POSTGRES_USER=myuser
@@ -42,20 +44,22 @@ ARG POSTGRES_DB=mydatabase
 #ENV POSTGRES_DB=$POSTGRES_DB
 ENV PGDATA=/var/lib/postgresql/data
 ENV PGHOST=127.0.0.1
-ENV PGPORT=5432
+ENV PGPORT=$POSTGRES_PORT
 ENV PGUSER=$POSTGRES_USER
 ENV PGDATABASE=$POSTGRES_DB
 
-RUN sed -i -E "s/listen[[:space:]]+[0-9]+/listen ${NGINX_PORT}/" /etc/nginx/http.d/default.conf \
-    && sed -i -E "s/listen[[:space:]]+\\[::\\]:[0-9]+/listen [::]:${NGINX_PORT}/" /etc/nginx/http.d/default.conf
+RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/g" /etc/nginx/http.d/default.conf \
+    && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" /etc/nginx/http.d/default.conf \
+    && sed -i -E "s/listen[[:space:]]+443([[:space:]]+ssl[[:space:];])/listen ${NGINX_HTTPS_PORT}\1/g" /etc/nginx/http.d/default.conf \
+    && sed -i -E "s/listen[[:space:]]+\\[::\\]:443([[:space:]]+ssl[[:space:];])/listen [::]:${NGINX_HTTPS_PORT}\1/g" /etc/nginx/http.d/default.conf
 
 RUN mkdir -p /run/nginx /var/lib/nginx /var/log/nginx \
     && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 
 # Configure PostgreSQL (minimal setup)
 RUN mkdir -p /var/run/postgresql /var/lib/postgresql/data \
-    && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data \
-    && su postgres -c "initdb -D /var/lib/postgresql/data"
+    && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data
+#    && su postgres -c "initdb -D /var/lib/postgresql/data"
 
 # Copy application code and configuration files
 COPY  . /app
@@ -69,4 +73,4 @@ ENTRYPOINT ["/sbin/tini"]
 CMD ["/app/launch.sh"]
 
 # Expose ports
-EXPOSE 8080 1443 5432
+EXPOSE $NGINX_HTTP_PORT $NGINX_HTTPS_PORT $POSTGRES_PORT
