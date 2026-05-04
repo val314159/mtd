@@ -31,23 +31,29 @@ RUN pip install --break-system-packages \
     celery psycopg2-binary kombu
 
 # Set PostgreSQL environment variables
-ENV POSTGRES_USER=myuser
-ENV POSTGRES_PASSWORD=mypassword
-ENV POSTGRES_DB=mydatabase
+ARG POSTGRES_USER=myuser
+#ARG POSTGRES_PXASSWORD=mypassword
+ARG POSTGRES_DB=mydatabase
 
-#ENV PGUSER=postgres
 ENV PGDATA=/var/lib/postgresql/data
 ENV PGHOST=127.0.0.1
 ENV PGPORT=5432
+ENV PGUSER=$POSTGRES_USER
 
 # Configure PostgreSQL (minimal setup)
 RUN mkdir -p /var/run/postgresql /var/lib/postgresql/data \
     && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data \
     && su postgres -c "initdb -D /var/lib/postgresql/data" \
     && su postgres -c "pg_ctl -D '$PGDATA' -w -l /tmp/postgres.log -o '-c listen_addresses=$PGHOST -p $PGPORT' start" \
-    && psql -U postgres -c "CREATE USER $POSTGRES_USER WITH PASSWORD '$POSTGRES_PASSWORD';" \
+    && psql -U postgres -c "CREATE USER $POSTGRES_USER;" \
     && psql -U postgres -c "CREATE DATABASE $POSTGRES_DB OWNER $POSTGRES_USER;" \
     && su postgres -c "pg_ctl -D '$PGDATA' -m fast stop"
+
+#    && psql -U postgres -c "CREATE USER $POSTGRES_USER WITH PASSWORD 'POSTGRES_PXASSWORD';" \
+
+ENV PGDATABASE=$POSTGRES_DB
+
+#RUN echo "$PGHOST:$PGPORT:$PGDATABASE:$PGUSER:$POSGRES_PXASSWORD" > /root/.pgpass && chmod 600 /root/.pgpass
 
 # Copy application code and configuration files
 COPY  . /app
