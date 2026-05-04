@@ -2,13 +2,17 @@
 set -eu
 
 # Start PostgreSQL
-su postgres -c "pg_ctl -D '$PGDATA' -w -l /var/lib/postgresql/logfile -o '-c listen_addresses=* -p 5432' start"
+su postgres -c "pg_ctl -D '$PGDATA' -w -l /var/lib/postgresql/logfile -o '-c listen_addresses=$PGHOST -p $PGPORT' start"
 
 if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
+    psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE USER \"$PGUSER\";"
+    psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $PGDATABASE OWNER \"$PGUSER\";"
+
     for sql in /docker-entrypoint-initdb.d/*.sql; do
         [ -e "$sql" ] || continue
-        psql -U postgres -f "$sql"
+        psql -U "$PGUSER" -d "$PGDATABASE" -v ON_ERROR_STOP=1 -f "$sql"
     done
+
     touch "$PGDATA/.mtd-init-complete"
 fi
 
@@ -16,4 +20,4 @@ fi
 nginx -g 'daemon off;'
 #nginx -g 'daemon off;' &
 # Start Celery worker with PostgreSQL backend
-#celery -A your_app worker --loglevel=info --broker=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@localhost/$POSTGRES_DB
+#celery -A your_app worker --loglevel=info --broker=postgresql:///$POSTGRES_DB
