@@ -1,31 +1,10 @@
-# Use official Alpine image as base
 FROM alpine:latest
-
-#RUN apk add --no-cache \
-#    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
-#RUN apk add --no-cache \
-#    tini nginx postgresql-client postgresql-server python3 py3-pip \
-#RUN apk add --no-cache \
-#    python3-dev build-base libc6-compat
-#RUN apk update && apk upgrade
-#RUN apk add postgresql postgresql-contrib postgresql-client postgresql-dev
 
 RUN apk add --no-cache \
     tini nginx \
     python3 py3-pip \
     postgresql postgresql-contrib postgresql-client
     
-#RUN apk add --no-cache \
-#    python3 py3-pip
-#    python3-dev build-base libc6-compat python3 py3-pip
-#RUN apk add --no-cache \
-#    postgresql postgresql-contrib postgresql-client # postgresql-dev
-#RUN apk add --no-cache \
-#    --repository https://dl-cdn.alpinelinux.org/alpine/edge/main \
-#    tini nginx postgresql-client postgresql-server python3 py3-pip \
-#    python3-dev build-base libc6-compat
-
-# Install Python dependencies
 RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
 
@@ -37,12 +16,9 @@ ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
 ARG POSTGRES_PORT=5432
 
-# Set PostgreSQL environment variables
 ARG POSTGRES_USER=myuser
 ARG POSTGRES_DB=mydatabase
 
-#ENV POSTGRES_USER=$POSTGRES_USER
-#ENV POSTGRES_DB=$POSTGRES_DB
 ENV PGDATA=/var/lib/postgresql/data
 ENV PGHOST=127.0.0.1
 ENV PGPORT=$POSTGRES_PORT
@@ -50,29 +26,52 @@ ENV PGUSER=$POSTGRES_USER
 ENV PGDATABASE=$POSTGRES_DB
 ENV PYTHONPATH=/app/src
 
-RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/g" /etc/nginx/http.d/default.conf \
-    && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" /etc/nginx/http.d/default.conf \
-    && sed -i -E "s/listen[[:space:]]+443([[:space:]]+ssl[[:space:];])/listen ${NGINX_HTTPS_PORT}\1/g" /etc/nginx/http.d/default.conf \
-    && sed -i -E "s/listen[[:space:]]+\\[::\\]:443([[:space:]]+ssl[[:space:];])/listen [::]:${NGINX_HTTPS_PORT}\1/g" /etc/nginx/http.d/default.conf
+ARG NGINX_CONF=/etc/nginx/http.d/default.conf
+RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/g" $NGINX_CONF \
+ && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" $NGINX_CONF \
+ && sed -i -E "s/listen[[:space:]]+443([[:space:]]+ssl[[:space:];])/listen ${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF \
+ && sed -i -E "s/listen[[:space:]]+\\[::\\]:443([[:space:]]+ssl[[:space:];])/listen [::]:${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF
 
-RUN mkdir -p /run/nginx /var/lib/nginx /var/log/nginx \
-    && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
+RUN mkdir -p             /run/nginx /var/lib/nginx /var/log/nginx \
+ && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 
 # Configure PostgreSQL (minimal setup)
 RUN mkdir -p /var/run/postgresql /var/lib/postgresql/data \
-    && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data
+ && chown -R postgres:postgres /var/run/postgresql /var/lib/postgresql/data
 
 # Copy application code and configuration files
-COPY  . /app
+COPY  src /app/src
+COPY  sql /app/sql
 WORKDIR /app
 RUN chown -R app:app /app
 
 RUN mkdir -p /docker-entrypoint-initdb.d/
 RUN cp sql/* /docker-entrypoint-initdb.d/
 
+RUN touch    /usr/local/bin/mtd-launch \
+ && chmod +x /usr/local/bin/mtd-launch \
+ && cat    > /usr/local/bin/mtd-launch <<'SH'
+#!/bin/sh
+set -eu
+if [ ! -s "$PGDATA/PG_VERSION" ]; then
+        mkdir -p "$PGDATA"
+        chown -R postgres:postgres "$PGDATA"
+        su postgres -c "initdb -D '$PGDATA'"
+fi
+su postgres -c "pg_ctl -D '$PGDATA' -w -l /var/lib/postgresql/logfile -o '-c listen_addresses=$PGHOST -p $PGPORT' start"
+if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE USER \"$PGUSER\";"
+        psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"$PGDATABASE\" OWNER \"$PGUSER\";"
+        touch "$PGDATA/.mtd-init-complete"
+fi
+nginx -g 'daemon off;' &
+su app -s /bin/sh -c 'celery -A mtd.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule' &
+su app -s /bin/sh -c 'celery -A mtd.celery_app worker --loglevel=info'
+SH
+
 # Start services using tini
 ENTRYPOINT ["/sbin/tini"]
-CMD ["/app/launch.sh"]
+CMD ["/usr/local/bin/mtd-launch"]
 
 # Expose ports
 EXPOSE $NGINX_HTTP_PORT $NGINX_HTTPS_PORT $POSTGRES_PORT
