@@ -1,7 +1,7 @@
 FROM alpine:latest
 RUN apk add --no-cache \
-    tini nginx supervisor python3 py3-pip \
-    postgresql postgresql-contrib postgresql-client
+    tini nginx supervisor python3 py3-pip py-virtualenv \
+    make postgresql postgresql-contrib postgresql-client
 RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
 RUN echo 'alias ll="ls -la"' >/root/.profile
@@ -55,9 +55,9 @@ RUN cat > /etc/supervisord.conf <<'CONF'
 [supervisord]
 nodaemon=true
 user=root
-[program:nginx]
-command=nginx -g "daemon off;"
-autorestart=true
+#[program:nginx]
+#command=nginx -g "daemon off;"
+#autorestart=true
 [program:celery-worker]
 command=su app -s /bin/sh -c "celery -A mtd.celery_app worker --loglevel=info"
 autorestart=true
@@ -65,9 +65,9 @@ autorestart=true
 command=su app -s /bin/sh -c "celery -A mtd.celery_app   beat --loglevel=info"
 autorestart=true
 CONF
-WORKDIR   /app
 COPY src  /app/src
 COPY sql  /app/sql
+WORKDIR   /app
 RUN chown -R app:app /app
 RUN mkdir -p /docker-entrypoint-initdb.d/
 RUN cp sql/* /docker-entrypoint-initdb.d/
