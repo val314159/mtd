@@ -12,4 +12,11 @@ else
     .v/bin/pip install sqlacodegen psycopg2-binary inflect
 fi
 echo generating tables $*
-.v/bin/sqlacodegen --option use_inflect --tables $TABLES $DBURL
+#for arg in "$@"; do
+#    echo "arg: $arg"
+#done
+
+echo "from mixins import *" >_models.py
+.v/bin/sqlacodegen --option use_inflect --tables $TABLES $DBURL >> _models.py
+sed -E 's/class ([[:alnum:]_]+)\(Base\):/class \1(\1Mixin, Base):/' _models.py >models.py
+rm -f _models.py

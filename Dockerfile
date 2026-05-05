@@ -5,7 +5,7 @@ RUN apk add --no-cache \
 RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
 RUN echo >>/root/.profile 'alias ll="ls -la"'
-RUN echo >>/root/.profile 'alias gen="sh src/scripts/generate.sh workflows tasks relations jobs | tee models.py"'
+RUN echo >>/root/.profile 'alias gen="sh src/scripts/generate.sh workflows tasks relations jobs"'
 ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
 ARG POSTGRES_PORT=5432
