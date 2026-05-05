@@ -99,7 +99,26 @@ class MtdGenerator(DeclarativeGenerator):
         if relationship.backref:
             kwargs["back_populates"] = repr(relationship.backref.name)
 
+        overlaps = self.render_relationship_overlaps(relationship)
+        if overlaps:
+            kwargs["overlaps"] = repr(overlaps)
+
         return kwargs
+
+    def render_relationship_overlaps(
+        self, relationship: RelationshipAttribute
+    ) -> str | None:
+        if relationship.source.name == "Task" and relationship.target.name == "Relation":
+            if relationship.name == "relations_workflow_targets":
+                return "relations_workflow_sources"
+
+        if relationship.source.name == "Relation" and relationship.target.name == "Task":
+            if relationship.name == "workflow_source":
+                return "relations_workflow_targets"
+            if relationship.name == "workflow_target":
+                return "relations_workflow_sources,workflow_source"
+
+        return None
 
 
 def generate_sqlalchemy(dburl: str, tables: list[str]) -> str:

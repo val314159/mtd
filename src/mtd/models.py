@@ -56,7 +56,7 @@ class Task(TaskMixin, Base):
     workflow: Mapped['Workflow'] = relationship('Workflow', back_populates='tasks')
     jobs: Mapped[list['Job']] = relationship('Job', back_populates='task')
     relations_workflow_sources: Mapped[list['Relation']] = relationship('Relation', foreign_keys='[Relation.workflow_id, Relation.source_id]', back_populates='workflow_source')
-    relations_workflow_targets: Mapped[list['Relation']] = relationship('Relation', foreign_keys='[Relation.workflow_id, Relation.target_id]', back_populates='workflow_target')
+    relations_workflow_targets: Mapped[list['Relation']] = relationship('Relation', foreign_keys='[Relation.workflow_id, Relation.target_id]', back_populates='workflow_target', overlaps='relations_workflow_sources')
 
 
 class Job(JobMixin, Base):
@@ -95,5 +95,5 @@ class Relation(RelationMixin, Base):
     target_id: Mapped[str] = mapped_column(Text, primary_key=True)
     kind: Mapped[str] = mapped_column(Text, primary_key=True, server_default=text("'satisfies'::text"))
 
-    workflow_source: Mapped['Task'] = relationship('Task', foreign_keys=[workflow_id, source_id], back_populates='relations_workflow_sources')
-    workflow_target: Mapped['Task'] = relationship('Task', foreign_keys=[workflow_id, target_id], back_populates='relations_workflow_targets')
+    workflow_source: Mapped['Task'] = relationship('Task', foreign_keys=[workflow_id, source_id], back_populates='relations_workflow_sources', overlaps='relations_workflow_targets')
+    workflow_target: Mapped['Task'] = relationship('Task', foreign_keys=[workflow_id, target_id], back_populates='relations_workflow_targets', overlaps='relations_workflow_sources,workflow_source')
