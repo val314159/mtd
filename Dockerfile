@@ -5,7 +5,7 @@ RUN apk add --no-cache \
 RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
 RUN echo >>/root/.profile 'alias ll="ls -la"'
-RUN echo >>/root/.profile 'alias gen="sh src/scripts/generate.sh workflows tasks relations jobs"'
+RUN echo >>/root/.profile 'alias gen="generate.sh src/mtd/models.py workflows tasks relations jobs"'
 ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
 ARG POSTGRES_PORT=5432
@@ -71,6 +71,7 @@ WORKDIR              /app
 RUN chown -R app:app /app
 RUN mkdir -p     /docker-entrypoint-initdb.d/
 RUN cp src/sql/* /docker-entrypoint-initdb.d/
+RUN cp src/scripts/* /usr/local/bin
 ENTRYPOINT ["tini"]
 CMD ["mtd-launch"]
 EXPOSE $NGINX_HTTP_PORT $NGINX_HTTPS_PORT $POSTGRES_PORT

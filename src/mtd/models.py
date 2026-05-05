@@ -1,9 +1,9 @@
-from mixins import *
+from .mixins import *
 from typing import Optional
 import datetime
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKeyConstraint, Index, PrimaryKeyConstraint, Table, Text, UniqueConstraint, text
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKeyConstraint, Index, PrimaryKeyConstraint, Table, Text, UniqueConstraint, and_, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -54,8 +54,8 @@ class Task(TaskMixin, Base):
     python_class: Mapped[Optional[str]] = mapped_column(Text)
 
     workflow: Mapped['Workflow'] = relationship('Workflow', back_populates='tasks')
-    workflow_targets: Mapped[list['Task']] = relationship('Task', secondary='relations', primaryjoin=and_(lambda: Task.workflow_id == t_relations.c.workflow_id, lambda: Task.id == t_relations.c.source_id), secondaryjoin=and_(lambda: Task.workflow_id == t_relations.c.workflow_id, lambda: Task.id == t_relations.c.target_id), back_populates='workflow_sources')
-    workflow_sources: Mapped[list['Task']] = relationship('Task', secondary='relations', primaryjoin=and_(lambda: Task.workflow_id == t_relations.c.workflow_id, lambda: Task.id == t_relations.c.target_id), secondaryjoin=and_(lambda: Task.workflow_id == t_relations.c.workflow_id, lambda: Task.id == t_relations.c.source_id), back_populates='workflow_targets')
+    workflow_targets: Mapped[list['Task']] = relationship('Task', secondary='relations', primaryjoin=lambda: and_(Task.workflow_id == t_relations.c.workflow_id, Task.id == t_relations.c.source_id), secondaryjoin=lambda: and_(Task.workflow_id == t_relations.c.workflow_id, Task.id == t_relations.c.target_id), back_populates='workflow_sources')
+    workflow_sources: Mapped[list['Task']] = relationship('Task', secondary='relations', primaryjoin=lambda: and_(Task.workflow_id == t_relations.c.workflow_id, Task.id == t_relations.c.target_id), secondaryjoin=lambda: and_(Task.workflow_id == t_relations.c.workflow_id, Task.id == t_relations.c.source_id), back_populates='workflow_targets')
     jobs: Mapped[list['Job']] = relationship('Job', back_populates='task')
 
 

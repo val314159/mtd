@@ -25,7 +25,7 @@ all:
 gen: models.py
 
 models.py:
-	sh generate.sh workflows,tasks,jobs >$@
+	sh src/scripts/generate.sh src/mtd/models.py workflows tasks jobs
 
 clean:
 	rm -fr *.log
@@ -35,6 +35,7 @@ clean:
 	find . -name .\#\*   | xargs rm -fr
 
 realclean: clean
+	rm -fr .uv-cache
 	rm -fr .docker-build-mtd.stamp
 	rm -fr mtd-pgdata uv.lock models.py
 	find . -name __pycache__ | xargs rm -fr
