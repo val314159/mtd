@@ -35,7 +35,21 @@ class TaskPeer:
     pass
 
 
-class Any(TaskPeer):
+class Watcher(TaskPeer):
+
+    WATCHER = True
+
+    pass
+
+
+class JobRunner(TaskPeer):
+
+    WATCHER = False
+
+    pass
+
+
+class Any(Watcher):
 
     STYLE = 'circle plus'
 
@@ -52,7 +66,7 @@ class Any(TaskPeer):
     pass
 
 
-class All(TaskPeer):
+class All(Watcher):
 
     STYLE = 'circle dot'
 
@@ -76,7 +90,7 @@ class Complete(All):
     pass
 
 
-class Decision(TaskPeer):
+class Decision(Watcher):
 
     STYLE = 'diamond'
     
@@ -94,7 +108,7 @@ class YesNoDecision(Decision):
     pass
 
 
-class FileExists(TaskPeer):
+class FileExists(Watcher):
 
     def exists(self):
         try:
