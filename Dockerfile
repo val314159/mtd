@@ -5,6 +5,7 @@ RUN apk add --no-cache \
 RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
 RUN echo 'alias ll="ls -la"' >/root/.profile
+RUN echo 'alias gen="sh generate.sh workflows | tee models.py"'
 RUN adduser -D -h /app app
 ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
@@ -65,12 +66,11 @@ autorestart=true
 command=su app -s /bin/sh -c "celery -A mtd.celery_app   beat --loglevel=info"
 autorestart=true
 CONF
-COPY src  /app/src
-COPY sql  /app/sql
-WORKDIR   /app
+COPY             src /app/src
+WORKDIR              /app
 RUN chown -R app:app /app
-RUN mkdir -p /docker-entrypoint-initdb.d/
-RUN cp sql/* /docker-entrypoint-initdb.d/
+RUN mkdir -p     /docker-entrypoint-initdb.d/
+RUN cp src/sql/* /docker-entrypoint-initdb.d/
 ENTRYPOINT ["tini"]
 CMD ["mtd-launch"]
 EXPOSE $NGINX_HTTP_PORT $NGINX_HTTPS_PORT $POSTGRES_PORT

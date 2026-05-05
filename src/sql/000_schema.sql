@@ -7,8 +7,8 @@ CREATE TYPE task_state AS ENUM (
 CREATE TYPE process_state AS ENUM (
     'PENDING',
     'RUNNING',
-    'DONE',
-    'FAILED'
+    'SUCCESS',
+    'FAILURE'
 );
 CREATE TABLE workflows (
     id text PRIMARY KEY,
@@ -25,17 +25,17 @@ CREATE TABLE tasks (
     meta jsonb NOT NULL DEFAULT '{}'::jsonb,
     PRIMARY KEY (workflow_id, id)
 );
-CREATE TABLE dependencies (
+CREATE TABLE relations (
     workflow_id text NOT NULL,
-    target_task text NOT NULL,
-    depends_on  text NOT NULL,
-    PRIMARY KEY (workflow_id, target_task, depends_on),
-    FOREIGN KEY (workflow_id, target_task)
+    source_id text NOT NULL,
+    target_id text NOT NULL,
+    PRIMARY KEY (workflow_id, source_id, target_id),
+    FOREIGN KEY (workflow_id, target_id)
         REFERENCES tasks(workflow_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (workflow_id, depends_on)
+    FOREIGN KEY (workflow_id, source_id)
         REFERENCES tasks(workflow_id, id) ON DELETE CASCADE
 );
-CREATE INDEX depends_on_idx ON dependencies(workflow_id, depends_on);
+CREATE INDEX relations_idx ON relations(workflow_id, target_id);
 CREATE TABLE jobs (
     id text PRIMARY KEY,
     task_workflow_id text NOT NULL,
