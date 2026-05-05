@@ -12,19 +12,68 @@ if TYPE_CHECKING:
 class TaskPeer:
 
     def __init__(self, peer: Task):
-        self.peer = peer
+        self._peer = peer
         return
 
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            raise AttributeError(name)
+        try:
+            return self._peer.meta[name]
+        except KeyError:
+            raise AttributeError(name) from None
+
+    def _get(self, name):
+        return self._peer.meta.get(name)
+
+    pass
+
+
+class Any(TaskPeer):
+
+    STYLE = 'circle plus'
+
+    def satisfies(self):
+        is_satisfied = False
+        for in_link in self._peer.in_links():
+            if in_link.satisfied():
+                is_satisfied = True
+                # don't break, we'll give all the dependencies a chance to run
+                pass
+            pass
+        return is_satisfied
+
+    pass
+
+
+class All(TaskPeer):
+
+    STYLE = 'circle dot'
+
+    def satisfies(self):
+        is_satisfied = True
+        for in_link in self._peer.in_links():
+            if not in_link.satisfied():
+                is_satisfied = False
+                # don't break, we'll give all the dependencies a chance to run
+                pass
+            pass
+        return is_satisfied
+
+    pass
+
+
+class Complete(All):
+
+    STYLE = 'double circle'
+        
     pass
 
 
 class Decision(TaskPeer):
 
-    def __init__(self, peer: Task):
-        super().__init__(peer)
-        self.value = None
-        pass
-
+    STYLE = 'diamond'
+    
     pass
 
 
@@ -40,11 +89,6 @@ class YesNoDecision(Decision):
 
 
 class FileExists(TaskPeer):
-
-    def __init__(self, peer: Task, path: str):
-        super().__init__(peer)
-        self.path = path
-        return
 
     def exists(self):
         try:
