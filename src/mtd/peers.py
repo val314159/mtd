@@ -15,6 +15,12 @@ class TaskPeer:
         self._peer = peer
         return
 
+    def in_links(self):
+        return self._peer.in_links()
+
+    def out_links(self):
+        return self._peer.out_links()
+
     def __getattr__(self, name):
         if name.startswith('_'):
             raise AttributeError(name)

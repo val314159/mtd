@@ -43,4 +43,5 @@ realclean: clean
 	tree -I .git -I .kelvin -asF
 
 test:
-	docker exec -it mtd python -m mtd.models
+	docker exec mtd python -m mtd.models
+	docker exec mtd python -m mtd.test_logic

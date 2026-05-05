@@ -57,6 +57,12 @@ class WorkflowMixin:
 
 class TaskMixin:
 
+    def in_links(self: Task):
+        return self.relations_workflow_targets
+
+    def out_links(self: Task):
+        return self.relations_workflow_sources
+
     @property
     def peer(self: Task):
         try:
@@ -106,7 +112,9 @@ class TaskMixin:
 
 class RelationMixin:
 
-    pass
+    def satisfied(self: Relation) -> bool:
+        predicate = getattr(self.workflow_source, self.kind)
+        return bool(predicate())
 
 
 class JobMixin:
