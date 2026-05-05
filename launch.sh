@@ -26,7 +26,6 @@ fi
 # Start Nginx
 nginx -g 'daemon off;' &
 
-# Start Celery worker
-#celery -A your_app worker --loglevel=info
-#su app -s /bin/sh -c 'celery -A your_app worker --loglevel=info'
-su app -c 'celery -A your_app worker --loglevel=info'
+# Start Celery beat and worker
+su app -s /bin/sh -c 'celery -A mtd.celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule' &
+su app -s /bin/sh -c 'celery -A mtd.celery_app worker --loglevel=info'

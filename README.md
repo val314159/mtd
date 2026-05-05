@@ -20,7 +20,7 @@ MTD provides a clean, type-safe framework for defining workflows with tasks and 
 ## Quick Start
 
 ```python
-from core import Workflow, Task, MyArtifact
+from mtd.core import Workflow, Task, MyArtifact
 
 # Create a workflow
 wf = Workflow("my_workflow")
@@ -84,7 +84,7 @@ Tasks follow a state machine:
 | `DONE` | Task completed |
 
 ```python
-from core import State
+from mtd.core import State
 
 if task.state == State.DONE:
     print("Task completed!")
@@ -95,7 +95,7 @@ if task.state == State.DONE:
 ### Custom Task
 
 ```python
-from core import Task
+from mtd.core import Task
 
 @dc.dataclass
 class MyTask(Task):
@@ -105,7 +105,7 @@ class MyTask(Task):
 ### Custom Artifact
 
 ```python
-from core import Artifact
+from mtd.core import Artifact
 
 @dc.dataclass
 class MyArtifact(Artifact):
@@ -155,7 +155,10 @@ task.state = State.RUNNING
 
 ```
 mtd/
-├── core.py       # Core classes (Workflow, Task, Artifact)
+├── src/mtd/core.py       # Core classes (Workflow, Task, Artifact)
+├── src/mtd/celery_app.py # Celery app configuration
+├── src/mtd/tasks.py      # Celery task definitions
+├── src/mtd/schedule.py   # Celery Beat schedule
 ├── Makefile      # Build commands
 └── README.md     # This file
 ```
@@ -167,7 +170,7 @@ mtd/
 make
 
 # Or directly
-python core.py
+PYTHONPATH=src python -m mtd.core
 ```
 
 ## Features

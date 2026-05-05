@@ -10,7 +10,10 @@ db_url = (
 )
 
 celery = Celery(
-    "your_app",
+    "mtd",
     broker=f"sqla+{db_url}",
     backend=f"db+{db_url}",
+    include=["mtd.tasks"],
 )
+
+celery.config_from_object("mtd.schedule")

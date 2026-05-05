@@ -9,7 +9,7 @@ sh:
 	docker run --rm -it $D mtd sh --login
 
 all:
-	python core.py
+	PYTHONPATH=src python -m mtd.core
 
 clean:
 	rm *.log

@@ -48,6 +48,7 @@ ENV PGHOST=127.0.0.1
 ENV PGPORT=$POSTGRES_PORT
 ENV PGUSER=$POSTGRES_USER
 ENV PGDATABASE=$POSTGRES_DB
+ENV PYTHONPATH=/app/src
 
 RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/g" /etc/nginx/http.d/default.conf \
     && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" /etc/nginx/http.d/default.conf \
