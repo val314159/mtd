@@ -43,27 +43,6 @@ def build_workflow() -> Workflow:
     return workflow
 
 
-def print_graph(workflow: Workflow) -> None:
-    print(f"workflow: {workflow.id} ({workflow.display_name})")
-    for task in workflow.tasks:
-        targets = ", ".join(
-            f"{relation.workflow_target.id} [{relation.kind}]"
-            for relation in task.relations_workflow_sources
-        ) or "-"
-        print(f"  {task.id:15s} -> {targets}")
-
-    print("\ndigraph cool_graph {")
-    for task in workflow.tasks:
-        print(f'  "{task.id}" [label="{task.display_name}"];')
-    for task in workflow.tasks:
-        for relation in task.relations_workflow_sources:
-            print(
-                f'  "{task.id}" -> "{relation.workflow_target.id}" '
-                f'[label="{relation.kind}"];'
-            )
-    print("}")
-
-
 def main() -> None:
     engine = create_engine(db_url())
     workflow = build_workflow()
@@ -76,7 +55,7 @@ def main() -> None:
         saved = session.get(Workflow, workflow.id)
         if saved is None:
             raise RuntimeError("workflow was not saved")
-        print_graph(saved)
+        saved.print_graph()
 
 
 if __name__ == "__main__":
