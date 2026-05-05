@@ -29,7 +29,7 @@ CREATE TABLE relations (
     workflow_id text NOT NULL,
     source_id text NOT NULL,
     target_id text NOT NULL,
-    kind text NOT NULL DEFAULT 'satisfies',
+    kind text NOT NULL DEFAULT 'is_satisfied',
     PRIMARY KEY (workflow_id, source_id, kind, target_id),
     FOREIGN KEY (workflow_id, target_id)
         REFERENCES tasks(workflow_id, id) ON DELETE CASCADE,
