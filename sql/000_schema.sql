@@ -1,3 +1,15 @@
+CREATE TYPE task_state AS ENUM (
+    'NOTSTARTED',
+    'RUNNING',
+    'BLOCKED',
+    'DONE'
+);
+CREATE TYPE process_state AS ENUM (
+    'PENDING',
+    'RUNNING',
+    'DONE',
+    'FAILED'
+);
 CREATE TABLE workflows (
     id text PRIMARY KEY,
     display_name text,
@@ -9,7 +21,7 @@ CREATE TABLE tasks (
     id text NOT NULL,
     display_name text,
     python_class text,
-    task_state text NOT NULL,
+    task_state task_state NOT NULL DEFAULT 'NOTSTARTED',
     meta jsonb NOT NULL DEFAULT '{}'::jsonb,
     PRIMARY KEY (workflow_id, id)
 );
@@ -29,11 +41,11 @@ CREATE TABLE jobs (
     task_workflow_id text NOT NULL,
     task_id text NOT NULL,
     celery_task_id text NOT NULL UNIQUE,
-    process_state  text NOT NULL,
+    process_state  process_state NOT NULL DEFAULT 'PENDING',
     meta jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at  timestamp DEFAULT now() NOT NULL,
-    started_at  timestamp,
-    finished_at timestamp,
+    created_at  timestamptz DEFAULT now() NOT NULL,
+    started_at  timestamptz,
+    finished_at timestamptz,
     FOREIGN KEY (task_workflow_id, task_id)
         REFERENCES tasks(workflow_id, id) ON DELETE CASCADE
 );
