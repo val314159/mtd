@@ -1,14 +1,22 @@
-.PHONY: dev sh all gen clean realclean
+.PHONY: dev sh exec kill all gen clean realclean
 
 D=--name mtd -v`pwd`:`pwd` -v `pwd`/mtd-pgdata:/var/lib/postgresql/data
 
-dev:
-	docker build -t mtd .
-	docker run --rm -it $D mtd
+dev: .docker-build-mtd.stamp
+	docker run  -it --rm $D mtd
 
-sh:
+sh: .docker-build-mtd.stamp
+	docker run  -it --rm $D -w`pwd` mtd sh --login
+
+.docker-build-mtd.stamp: Dockerfile
 	docker build -t mtd .
-	docker run --rm -it $D -w`pwd` mtd sh --login
+	touch $@
+
+exec:
+	docker exec -it -w`pwd` mtd sh --login
+
+kill:
+	docker exec -it mtd killall -9 supervisord
 
 all:
 	PYTHONPATH=src python -m mtd.core
@@ -26,10 +34,8 @@ clean:
 	find . -name .\#\*   | xargs rm -fr
 
 realclean: clean
+	rm -fr .docker-build-mtd.stamp
 	rm -fr mtd-pgdata uv.lock models.py
 	find . -name __pycache__ | xargs rm -fr
 	find . -name .ve -o -name .venv | xargs rm -fr
 	tree -I .git -I .kelvin -asF
-
-kill:
-	docker exec -it mtd killall -9 supervisord

@@ -8,3 +8,7 @@ __pycache__
 
 *.?
 *.log
+
+.docker-build-*
+
+mtd-pgdata
