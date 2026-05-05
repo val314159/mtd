@@ -4,9 +4,8 @@ RUN apk add --no-cache \
     make postgresql postgresql-contrib postgresql-client
 RUN pip install --break-system-packages \
     celery psycopg2-binary kombu sqlalchemy
-RUN echo 'alias ll="ls -la"' >/root/.profile
-RUN echo 'alias gen="sh generate.sh workflows | tee models.py"'
-RUN adduser -D -h /app app
+RUN echo >>/root/.profile 'alias ll="ls -la"'
+RUN echo >>/root/.profile 'alias gen="sh src/scripts/generate.sh workflows tasks relations jobs | tee models.py"'
 ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
 ARG POSTGRES_PORT=5432
@@ -66,6 +65,7 @@ autorestart=true
 command=su app -s /bin/sh -c "celery -A mtd.celery_app   beat --loglevel=info"
 autorestart=true
 CONF
+RUN    adduser -D -h /app app
 COPY             src /app/src
 WORKDIR              /app
 RUN chown -R app:app /app
