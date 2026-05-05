@@ -52,7 +52,7 @@ def main() -> None:
         session.add(workflow)
         session.commit()
 
-        saved = session.get(Workflow, workflow.id)
+        saved = Workflow.load(workflow.id, session)
         if saved is None:
             raise RuntimeError("workflow was not saved")
         saved.print_graph()

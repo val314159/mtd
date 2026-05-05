@@ -5,7 +5,11 @@ from .models import Workflow, Task, Relation, Job
 
 
 class WorkflowMixin:
-    
+
+    @staticmethod
+    def load(session, workflow_id):
+        return session.get(Workflow, workflow_id)
+
     def add_task(self: Workflow, task_id: str, label: str, group: str):
         from .models import Task, TaskState
 
