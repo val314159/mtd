@@ -51,6 +51,17 @@ class WorkflowMixin:
 
 class TaskMixin:
 
+    @property
+    def peer(self: Task):
+        if not (_peer := getattr(self, '_peer')):
+            from .peers import *
+            print("CLASS NAME", self.python_class)
+            python_class = locals()[self.python_class]
+            print("CLASS", python_class)
+            _peer = self.python_task
+            pass
+        return _peer
+
     def link(self: Task, *targets, kind: str = "satisfies") -> None:
         self.relations_workflow_sources.extend(
             Relation(workflow_target=target, kind=kind)

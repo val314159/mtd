@@ -13,7 +13,7 @@ celery = Celery(
     "mtd",
     broker=f"sqla+{db_url}",
     backend=f"db+{db_url}",
-    include=["mtd.tasks"],
+    include=["mtd.celery_tasks"],
 )
 
 celery.config_from_object("mtd.schedule")
