@@ -1,4 +1,4 @@
-.PHONY: docker sh exec kill all gen clean realclean
+.PHONY: docker sh exec kill all gen clean realclean test
 
 D=--name mtd -v`pwd`:`pwd` -v `pwd`/mtd-pgdata:/var/lib/postgresql/data
 
@@ -41,3 +41,6 @@ realclean: clean
 	find . -name __pycache__ | xargs rm -fr
 	find . -name .v\*        | xargs rm -fr
 	tree -I .git -I .kelvin -asF
+
+test:
+	docker exec -it mtd python -m mtd.models

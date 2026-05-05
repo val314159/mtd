@@ -1,25 +1,31 @@
 '''
 '''
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
-from .models import Workflow, Task, Relation, Job
+if TYPE_CHECKING:
+    from .models import Workflow, Task, Relation, Job
+    from sqlalchemy.orm import Session
 
 
 class WorkflowMixin:
 
     @staticmethod
-    def load(session, workflow_id):
+    def load(session: Session, workflow_id: str):
+        from .models import Workflow
+
         return session.get(Workflow, workflow_id)
 
-    def add_task(self: Workflow, task_id: str, label: str, group: str):
+    def add_task(self: Workflow, task_id: str, python_class: str, label: str = None, **meta):
         from .models import Task, TaskState
 
         return Task(
             workflow=self,
             id=task_id,
-            display_name=label,
+            display_name=label or task_id,
             task_state=TaskState.NOTSTARTED,
-            python_class=f"examples.{task_id}",
-            meta={"group": group},
+            python_class=python_class,
+            meta=meta,
         )
 
     def print_graph(self: Workflow) -> None:
@@ -53,22 +59,48 @@ class TaskMixin:
 
     @property
     def peer(self: Task):
-        if not (_peer := getattr(self, '_peer')):
-            from .peers import *
-            print("CLASS NAME", self.python_class)
-            python_class = locals()[self.python_class]
-            print("CLASS", python_class)
-            _peer = self.python_task
+        try:
+            return object.__getattribute__(self, "_peer")
+        except AttributeError:
             pass
+
+        if not self.python_class:
+            raise AttributeError("peer")
+
+        if '.' in self.python_class:
+            raise AttributeError("dots not allowed in peer classnames")
+
+        from . import peers
+
+        try:
+            peer_class = getattr(peers, self.python_class)
+        except AttributeError:
+            raise AttributeError(
+                f"no peer class named {self.python_class!r}"
+            ) from None
+
+        _peer = peer_class(self)
+        self._peer = _peer
         return _peer
 
-    def link(self: Task, *targets, kind: str = "satisfies") -> None:
+    def __getattr__(self: TaskMixin, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+
+        try:
+            return getattr(self.peer, name)
+        except AttributeError:
+            raise AttributeError(name) from None
+    
+    def link(self: Task, *targets: Task, kind: str = "satisfies") -> None:
+        from .models import Relation
+
         self.relations_workflow_sources.extend(
             Relation(workflow_target=target, kind=kind)
             for target in targets
         )
         return
-    
+
     pass
 
 

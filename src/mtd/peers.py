@@ -1,12 +1,17 @@
 '''
 '''
+from __future__ import annotations
+from typing import TYPE_CHECKING
 
 import os
+
+if TYPE_CHECKING:
+    from .models import Workflow, Task, Relation, Job
 
 
 class TaskPeer:
 
-    def __init__(self, peer):
+    def __init__(self, peer: Task):
         self.peer = peer
         return
 
@@ -15,7 +20,7 @@ class TaskPeer:
 
 class Decision(TaskPeer):
 
-    def __init__(self, peer):
+    def __init__(self, peer: Task):
         super().__init__(peer)
         self.value = None
         pass
@@ -36,7 +41,7 @@ class YesNoDecision(Decision):
 
 class FileExists(TaskPeer):
 
-    def __init__(self, peer, path):
+    def __init__(self, peer: Task, path: str):
         super().__init__(peer)
         self.path = path
         return
