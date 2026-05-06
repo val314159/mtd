@@ -1,18 +1,14 @@
-import os
-
 from celery import Celery
 
+from .db_url import db_url
 
-db_url = (
-    f"postgresql+psycopg2://"
-    f"{os.environ['PGUSER']}@{os.environ['PGHOST']}:"
-    f"{os.environ['PGPORT']}/{os.environ['PGDATABASE']}"
-)
+
+DB_URL = db_url()
 
 celery = Celery(
     "mtd",
-    broker=f"sqla+{db_url}",
-    backend=f"db+{db_url}",
+    broker=f"sqla+{DB_URL}",
+    backend=f"db+{DB_URL}",
     include=["mtd.celery_tasks"],
 )
 

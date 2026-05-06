@@ -1,50 +1,54 @@
 from __future__ import annotations
 
-import os
 import subprocess
 
-from sqlalchemy import create_engine
+from celery.utils.log import get_task_logger
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
-from mtd.celery_app import celery
-from mtd.models import Job, JobState, TaskState
+from .celery_app import celery
+from .models import Job, JobState, TaskState
+
+from .db_url import db_url
 
 
-def db_url() -> str:
-    user = os.environ["PGUSER"]
-    host = os.environ["PGHOST"]
-    port = os.environ["PGPORT"]
-    database = os.environ["PGDATABASE"]
-    return f"postgresql+psycopg2://{user}@{host}:{port}/{database}"
+logger = get_task_logger(__name__)
 
+engine = create_engine(db_url())
 
+    
 @celery.task(name="mtd.debug")
 def debug():
     print("beat fired")
 
 
-@celery.task(bind=True, name="mtd.run_make")
-def run_make(self, workflow_id: str, task_id: str, target: str, cwd: str | None = None):
-    engine = create_engine(db_url())
+def update_job_state_to_running_maybe(self) -> bool:
+
+    with Session(engine) as session:
+        job = session.execute(
+            select(Job)
+            .where(Job.id == self.request.id)
+            .with_for_update()
+        ).scalar_one_or_none()
+
+        if job is None:
+            raise RuntimeError(f"job not found for celery task {self.request.id}")
+
+        if job.job_state != JobState.PENDING:
+            return False
+
+        job.job_state = JobState.RUNNING
+        job.task.task_state = TaskState.RUNNING
+        session.commit()
+        return True
+
+
+def update_job_state_to_complete(self, result) -> None:
 
     with Session(engine) as session:
         job = session.get(Job, self.request.id)
         if job is None:
-            raise RuntimeError(f"job not found for celery task {self.request.id}")
-
-        task = job.task
-        job.process_state = JobState.RUNNING
-        task.task_state = TaskState.RUNNING
-        session.commit()
-
-        command = ["make", target]
-        result = subprocess.run(
-            command,
-            cwd=cwd,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+            raise RuntimeError(f"job disappeared while running {self.request.id}")
 
         job.meta = {
             **job.meta,
@@ -54,22 +58,37 @@ def run_make(self, workflow_id: str, task_id: str, target: str, cwd: str | None 
         }
 
         if result.returncode == 0:
-            job.process_state = JobState.SUCCESS
-            task.task_state = TaskState.DONE
+            job.job_state = JobState.SUCCESS
+            job.task.task_state = TaskState.DONE
         else:
-            job.process_state = JobState.FAILURE
-            task.task_state = TaskState.BLOCKED
+            job.job_state = JobState.FAILURE
+            job.task.task_state = TaskState.BLOCKED
 
         session.commit()
+        return
 
-        if result.returncode != 0:
-            raise RuntimeError(
-                f"make {target!r} failed with exit code {result.returncode}"
-            )
 
-        return {
-            "workflow_id": workflow_id,
-            "task_id": task_id,
-            "target": target,
-            "returncode": result.returncode,
-        }
+@celery.task(bind=True, name="mtd.run_make")
+def run_make(self, workflow_id: str, task_id: str, target: str, cwd: str | None = None):
+
+    updated = update_job_state_to_running_maybe(self)
+
+    if not updated:
+        logger.warning(
+            "refusing to run make job for %s/%s because it is already in-process",
+            workflow_id,
+            task_id,
+        )
+        return None
+
+    result = subprocess.run(
+        ["make", target],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    update_job_state_to_complete(self, result)
+
+    return result.returncode

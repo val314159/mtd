@@ -73,7 +73,7 @@ class MakeTask(JobRunner):
         ).scalar_one()
 
         active_states = {JobState.PENDING, JobState.RUNNING}
-        if any(job.process_state in active_states
+        if any(job.job_state in active_states
                for job in locked_task.jobs):
             return
 
@@ -82,7 +82,7 @@ class MakeTask(JobRunner):
             Job(
                 id=job_id,
                 celery_task_id=job_id,
-                process_state=JobState.PENDING,
+                job_state=JobState.PENDING,
                 meta={"target": target, "cwd": cwd},
             )
         )
@@ -105,11 +105,11 @@ class MakeTask(JobRunner):
 
     def success(self):
         job = self._latest_job()
-        return job is not None and job.process_state == JobState.SUCCESS
+        return job is not None and job.job_state == JobState.SUCCESS
 
     def failure(self):
         job = self._latest_job()
-        return job is not None and job.process_state == JobState.FAILURE
+        return job is not None and job.job_state == JobState.FAILURE
 
     def _latest_job(self):
         jobs = list(self._peer.jobs)
