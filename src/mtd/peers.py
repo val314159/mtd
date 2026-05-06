@@ -53,7 +53,7 @@ class MakeTask(JobRunner):
     def start(self) -> str | None:
         from .celery_tasks import run_make
 
-        target = self._get("target") or self._peer.id
+        target = self._get("target")
         cwd = self._get("cwd")
 
         job_id = self._peer.create_job({"target": target, "cwd": cwd})
@@ -67,6 +67,27 @@ class MakeTask(JobRunner):
                 self._peer.workflow_id,
                 self._peer.id,
                 target,
+                cwd,
+            ),
+        )
+        return job_id
+
+    def reset(self) -> str | None:
+        from .celery_tasks import run_clean
+
+        target = "clean"
+        cwd = self._get("cwd")
+        
+        job_id = self._peer.create_job({"target": target, "cwd": cwd})
+        
+        if job_id is None:
+            return None
+            
+        run_clean.apply_async(
+            task_id=job_id,
+            args=(
+                self._peer.workflow_id,
+                self._peer.id,
                 cwd,
             ),
         )

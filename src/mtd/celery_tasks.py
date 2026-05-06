@@ -43,7 +43,7 @@ def update_job_state_to_running_maybe(self) -> bool:
         return True
 
 
-def update_job_state_to_complete(self, result) -> None:
+def update_job_state_to_done(self, result) -> None:
 
     with Session(engine) as session:
         job = session.get(Job, self.request.id)
@@ -60,6 +60,31 @@ def update_job_state_to_complete(self, result) -> None:
         if result.returncode == 0:
             job.job_state = JobState.SUCCESS
             job.task.task_state = TaskState.DONE
+        else:
+            job.job_state = JobState.FAILURE
+            job.task.task_state = TaskState.BLOCKED
+
+        session.commit()
+        return
+
+
+def update_job_state_to_idle(self, result) -> None:
+
+    with Session(engine) as session:
+        job = session.get(Job, self.request.id)
+        if job is None:
+            raise RuntimeError(f"job disappeared while running {self.request.id}")
+
+        job.meta = {
+            **job.meta,
+            "returncode": result.returncode,
+            "stdout": result.stdout[-20000:],
+            "stderr": result.stderr[-20000:],
+        }
+
+        if result.returncode == 0:
+            job.job_state = JobState.SUCCESS
+            job.task.task_state = TaskState.IDLE
         else:
             job.job_state = JobState.FAILURE
             job.task.task_state = TaskState.BLOCKED
@@ -89,6 +114,32 @@ def run_make(self, workflow_id: str, task_id: str, target: str, cwd: str | None 
         check=False,
     )
 
-    update_job_state_to_complete(self, result)
+    update_job_state_to_done(self, result)
+
+    return result.returncode
+
+
+@celery.task(bind=True, name="mtd.run_clean")
+def run_clean(self, workflow_id: str, task_id: str, cwd: str | None = None):
+
+    updated = update_job_state_to_running_maybe(self)
+
+    if not updated:
+        logger.warning(
+            "refusing to run clean job for %s/%s because it is already in-process",
+            workflow_id,
+            task_id,
+        )
+        return None
+
+    result = subprocess.run(
+        ["make", "clean"],
+        cwd=cwd,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    update_job_state_to_idle(self, result)
 
     return result.returncode
