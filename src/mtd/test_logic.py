@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mtd.models import Workflow
+from mtd.models import Job, ProcessState, Workflow
 
 
 def test_relation_satisfied() -> None:
@@ -48,10 +48,39 @@ def test_file_exists() -> None:
     assert missing.exists() is False
 
 
+def test_make_task_result_predicates() -> None:
+    workflow = Workflow(id="make_probe")
+    task = workflow.add_task("build", "MakeTask")
+
+    assert task.success() is False
+    assert task.failure() is False
+
+    task.jobs.append(
+        Job(
+            id="failed",
+            celery_task_id="failed",
+            process_state=ProcessState.FAILURE,
+        )
+    )
+    assert task.success() is False
+    assert task.failure() is True
+
+    task.jobs.append(
+        Job(
+            id="succeeded",
+            celery_task_id="succeeded",
+            process_state=ProcessState.SUCCESS,
+        )
+    )
+    assert task.success() is True
+    assert task.failure() is False
+
+
 def main() -> None:
     test_relation_satisfied()
     test_any_all()
     test_file_exists()
+    test_make_task_result_predicates()
     print("logic ok")
 
 
