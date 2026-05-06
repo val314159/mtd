@@ -3,7 +3,11 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .models import Workflow, Task, Relation, Job
-    from sqlalchemy.orm import Session
+
+import uuid
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session, object_session
 
 
 class WorkflowMixin:
@@ -104,6 +108,35 @@ class TaskMixin:
             for target in targets
         )
         return
+
+    def create_job(self, meta) -> str | None:
+        from .models import Task, Job, JobState
+
+        session = object_session(self)
+        if session is None:
+            raise RuntimeError("create_job() requires a task attached to a session")
+
+        locked_task = session.execute(
+            select(Task)
+            .where(Task.workflow_id == self.workflow_id, Task.id == self.id)
+            .with_for_update() # THIS IS THE LOCK IT LIVES UNTIL COMMIT
+        ).scalar_one()
+
+        active_states = {JobState.PENDING, JobState.RUNNING}
+        if any(job.job_state in active_states
+               for job in locked_task.jobs):
+            return None
+
+        job_id = uuid.uuid4().hex
+        locked_task.jobs.append(
+            Job(id=job_id,
+                celery_task_id=job_id,
+                job_state=JobState.PENDING,
+                meta=meta,
+            )
+        )
+        session.commit()
+        return job_id
 
     pass
 

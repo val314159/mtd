@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 import os
-import uuid
 
-from sqlalchemy import select
-from sqlalchemy.orm import object_session
-
-from .models import Workflow, Task, Relation, Job, JobState
+from .models import Task, JobState
 
 
 class TaskPeer:
@@ -54,54 +50,27 @@ class MakeTask(JobRunner):
     use celery to run "make <task_id>"
     '''
 
-    def run(self):
+    def start(self) -> str | None:
         from .celery_tasks import run_make
 
         target = self._get("target") or self._peer.id
         cwd = self._get("cwd")
-        workflow_id = self._peer.workflow_id
-        task_id = self._peer.id
 
-        session = object_session(self._peer)
-        if session is None:
-            raise RuntimeError("MakeTask.run() requires a task attached to a session")
-
-        locked_task = session.execute(
-            select(Task)
-            .where(Task.workflow_id == workflow_id, Task.id == task_id)
-            .with_for_update() # THIS IS THE LOCK IT LIVES UNTIL COMMIT
-        ).scalar_one()
-
-        active_states = {JobState.PENDING, JobState.RUNNING}
-        if any(job.job_state in active_states
-               for job in locked_task.jobs):
-            return
-
-        job_id = uuid.uuid4().hex
-        locked_task.jobs.append(
-            Job(
-                id=job_id,
-                celery_task_id=job_id,
-                job_state=JobState.PENDING,
-                meta={"target": target, "cwd": cwd},
-            )
-        )
-        session.commit()
-
+        job_id = self._peer.create_job({"target": target, "cwd": cwd})
+        
+        if job_id is None:
+            return None
+            
         run_make.apply_async(
             task_id=job_id,
             args=(
-                workflow_id,
-                task_id,
+                self._peer.workflow_id,
+                self._peer.id,
                 target,
                 cwd,
             ),
         )
-        return
-
-    def start(self):
-        self.run()
-        return
+        return job_id
 
     def success(self):
         job = self._latest_job()
