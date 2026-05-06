@@ -1,7 +1,8 @@
 CREATE TYPE task_state AS ENUM (
     'IDLE',
-    'BLOCKED',
+    'WAITING',
     'RUNNING',
+    'BLOCKED',
     'DONE'
 );
 CREATE TYPE job_state AS ENUM (
