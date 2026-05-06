@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from mtd.celery_app import celery
-from mtd.models import Job, ProcessState, TaskState
+from mtd.models import Job, JobState, TaskState
 
 
 def db_url() -> str:
@@ -30,18 +30,10 @@ def run_make(self, workflow_id: str, task_id: str, target: str, cwd: str | None 
     with Session(engine) as session:
         job = session.get(Job, self.request.id)
         if job is None:
-            job = Job(
-                id=self.request.id,
-                task_workflow_id=workflow_id,
-                task_id=task_id,
-                celery_task_id=self.request.id,
-                process_state=ProcessState.PENDING,
-                meta={"target": target, "cwd": cwd},
-            )
-            session.add(job)
+            raise RuntimeError(f"job not found for celery task {self.request.id}")
 
         task = job.task
-        job.process_state = ProcessState.RUNNING
+        job.process_state = JobState.RUNNING
         task.task_state = TaskState.RUNNING
         session.commit()
 
@@ -62,10 +54,10 @@ def run_make(self, workflow_id: str, task_id: str, target: str, cwd: str | None 
         }
 
         if result.returncode == 0:
-            job.process_state = ProcessState.SUCCESS
+            job.process_state = JobState.SUCCESS
             task.task_state = TaskState.DONE
         else:
-            job.process_state = ProcessState.FAILURE
+            job.process_state = JobState.FAILURE
             task.task_state = TaskState.BLOCKED
 
         session.commit()

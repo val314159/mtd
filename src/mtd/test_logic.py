@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from mtd.models import Job, ProcessState, Workflow
+from mtd.models import Job, JobState, Workflow
 
 
 def test_relation_satisfied() -> None:
@@ -59,7 +59,7 @@ def test_make_task_result_predicates() -> None:
         Job(
             id="failed",
             celery_task_id="failed",
-            process_state=ProcessState.FAILURE,
+            job_state=JobState.FAILURE,
         )
     )
     assert task.success() is False
@@ -69,7 +69,7 @@ def test_make_task_result_predicates() -> None:
         Job(
             id="succeeded",
             celery_task_id="succeeded",
-            process_state=ProcessState.SUCCESS,
+            job_state=JobState.SUCCESS,
         )
     )
     assert task.success() is True

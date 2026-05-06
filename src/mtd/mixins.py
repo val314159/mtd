@@ -23,7 +23,7 @@ class WorkflowMixin:
             workflow=self,
             id=task_id,
             display_name=label or task_id,
-            task_state=TaskState.NOTSTARTED,
+            task_state=TaskState.IDLE,
             python_class=python_class,
             meta=meta,
         )

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import os
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.orm import object_session
 
 if TYPE_CHECKING:
@@ -59,52 +60,65 @@ class MakeTask(JobRunner):
 
     def run(self):
         from .celery_tasks import run_make
-        from .models import Job, ProcessState, TaskState
+        from .models import Job, JobState, Task
 
         target = self._get("target") or self._peer.id
         cwd = self._get("cwd")
+        workflow_id = self._peer.workflow_id
+        task_id = self._peer.id
+
         session = object_session(self._peer)
         if session is None:
             raise RuntimeError("MakeTask.run() requires a task attached to a session")
 
+        locked_task = session.execute(
+            select(Task)
+            .where(Task.workflow_id == workflow_id, Task.id == task_id)
+            .with_for_update() # THIS IS THE LOCK IT LIVES UNTIL COMMIT
+        ).scalar_one()
+
+        active_states = {JobState.PENDING, JobState.RUNNING}
+        if any(job.process_state in active_states
+               for job in locked_task.jobs):
+            return
+
         job_id = uuid.uuid4().hex
-        job = Job(
-            id=job_id,
-            task=self._peer,
-            celery_task_id=job_id,
-            process_state=ProcessState.PENDING,
-            meta={"target": target, "cwd": cwd},
+        locked_task.jobs.append(
+            Job(
+                id=job_id,
+                celery_task_id=job_id,
+                process_state=JobState.PENDING,
+                meta={"target": target, "cwd": cwd},
+            )
         )
-        self._peer.jobs.append(job)
-        self._peer.task_state = TaskState.RUNNING
         session.commit()
 
         run_make.apply_async(
             task_id=job_id,
             args=(
-                self._peer.workflow_id,
-                self._peer.id,
+                workflow_id,
+                task_id,
                 target,
                 cwd,
             ),
         )
-
-        return job
+        return
 
     def start(self):
-        return self.run()
+        self.run()
+        return
 
     def success(self):
-        from .models import ProcessState
+        from .models import JobState
 
         job = self._latest_job()
-        return job is not None and job.process_state == ProcessState.SUCCESS
+        return job is not None and job.process_state == JobState.SUCCESS
 
     def failure(self):
-        from .models import ProcessState
+        from .models import JobState
 
         job = self._latest_job()
-        return job is not None and job.process_state == ProcessState.FAILURE
+        return job is not None and job.process_state == JobState.FAILURE
 
     def _latest_job(self):
         jobs = list(self._peer.jobs)
