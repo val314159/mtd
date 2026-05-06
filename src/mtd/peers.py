@@ -1,7 +1,4 @@
-'''
-'''
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 import os
 import uuid
@@ -9,8 +6,7 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.orm import object_session
 
-if TYPE_CHECKING:
-    from .models import Workflow, Task, Relation, Job
+from .models import Workflow, Task, Relation, Job, JobState
 
 
 class TaskPeer:
@@ -60,7 +56,6 @@ class MakeTask(JobRunner):
 
     def run(self):
         from .celery_tasks import run_make
-        from .models import Job, JobState, Task
 
         target = self._get("target") or self._peer.id
         cwd = self._get("cwd")
@@ -109,14 +104,10 @@ class MakeTask(JobRunner):
         return
 
     def success(self):
-        from .models import JobState
-
         job = self._latest_job()
         return job is not None and job.process_state == JobState.SUCCESS
 
     def failure(self):
-        from .models import JobState
-
         job = self._latest_job()
         return job is not None and job.process_state == JobState.FAILURE
 

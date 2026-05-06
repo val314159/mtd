@@ -11,7 +11,7 @@ class Base(DeclarativeBase):
     pass
 
 
-class ProcessState(str, enum.Enum):
+class JobState(str, enum.Enum):
     PENDING = 'PENDING'
     RUNNING = 'RUNNING'
     SUCCESS = 'SUCCESS'
@@ -19,9 +19,9 @@ class ProcessState(str, enum.Enum):
 
 
 class TaskState(str, enum.Enum):
-    NOTSTARTED = 'NOTSTARTED'
-    RUNNING = 'RUNNING'
+    IDLE = 'IDLE'
     BLOCKED = 'BLOCKED'
+    RUNNING = 'RUNNING'
     DONE = 'DONE'
 
 
@@ -48,7 +48,7 @@ class Task(TaskMixin, Base):
 
     workflow_id: Mapped[str] = mapped_column(Text, primary_key=True)
     id: Mapped[str] = mapped_column(Text, primary_key=True)
-    task_state: Mapped[TaskState] = mapped_column(Enum(TaskState, values_callable=lambda cls: [member.value for member in cls], name='task_state'), nullable=False, server_default=text("'NOTSTARTED'::task_state"))
+    task_state: Mapped[TaskState] = mapped_column(Enum(TaskState, values_callable=lambda cls: [member.value for member in cls], name='task_state'), nullable=False, server_default=text("'IDLE'::task_state"))
     meta: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     display_name: Mapped[Optional[str]] = mapped_column(Text)
     python_class: Mapped[Optional[str]] = mapped_column(Text)
@@ -72,7 +72,7 @@ class Job(JobMixin, Base):
     task_workflow_id: Mapped[str] = mapped_column(Text, nullable=False)
     task_id: Mapped[str] = mapped_column(Text, nullable=False)
     celery_task_id: Mapped[str] = mapped_column(Text, nullable=False)
-    process_state: Mapped[ProcessState] = mapped_column(Enum(ProcessState, values_callable=lambda cls: [member.value for member in cls], name='process_state'), nullable=False, server_default=text("'PENDING'::process_state"))
+    job_state: Mapped[JobState] = mapped_column(Enum(JobState, values_callable=lambda cls: [member.value for member in cls], name='job_state'), nullable=False, server_default=text("'PENDING'::job_state"))
     meta: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime(True), nullable=False, server_default=text('now()'))
     started_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(True))
