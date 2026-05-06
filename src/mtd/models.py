@@ -20,8 +20,9 @@ class JobState(str, enum.Enum):
 
 class TaskState(str, enum.Enum):
     IDLE = 'IDLE'
-    BLOCKED = 'BLOCKED'
+    WAITING = 'WAITING'
     RUNNING = 'RUNNING'
+    BLOCKED = 'BLOCKED'
     DONE = 'DONE'
 
 
