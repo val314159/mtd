@@ -49,6 +49,20 @@ class JobRunner(TaskPeer):
     pass
 
 
+class MakeTask(JobRunner):
+    '''
+    use celery to run "make <task_id>"
+    '''
+
+    def success(self):
+        pass
+
+    def failure(self):
+        pass
+    
+    pass
+
+
 class Any(Watcher):
 
     STYLE = 'circle plus'
@@ -109,7 +123,7 @@ class YesNoDecision(Decision):
 
 
 class FileExists(Watcher):
-
+    
     def exists(self):
         try:
             os.stat(self.path)
@@ -117,5 +131,8 @@ class FileExists(Watcher):
         except FileNotFoundError:
             return False
         pass
+
+    def missing(self):
+        return not self.exists()
 
     pass
