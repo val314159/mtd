@@ -1,4 +1,4 @@
-.PHONY: docker sh exec kill all gen clean realclean test
+.PHONY: docker sh exec kill all gen clean realclean test build
 
 D=--name mtd -v`pwd`:`pwd` -v `pwd`/mtd-pgdata:/var/lib/postgresql/data
 
@@ -8,19 +8,18 @@ docker: .docker-build-mtd.stamp
 sh: .docker-build-mtd.stamp
 	docker run  -it --rm $D -w`pwd` mtd sh --login
 
-.docker-build-mtd.stamp: Dockerfile src
+.docker-build-mtd.stamp: Dockerfile src build
+	touch $@
+
+build:
 	rm -fr mtd-pgdata
 	docker build -t mtd .
-	touch $@
 
 exec:
 	docker exec -it -w`pwd` mtd sh --login
 
 kill:
 	docker exec -it mtd killall -9 supervisord
-
-all:
-	PYTHONPATH=src python -m mtd.core
 
 gen: models.py
 
@@ -45,3 +44,4 @@ realclean: clean
 test:
 	docker exec mtd python -m mtd.models
 	docker exec mtd python -m mtd.test_logic
+	docker exec mtd python -m better_example

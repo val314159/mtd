@@ -5,13 +5,7 @@ from sqlalchemy.orm import Session
 
 from mtd.models import Relation, Task, TaskState, Workflow
 
-
-def db_url() -> str:
-    user = os.environ["PGUSER"]
-    host = os.environ["PGHOST"]
-    port = os.environ["PGPORT"]
-    database = os.environ["PGDATABASE"]
-    return f"postgresql+psycopg2://{user}@{host}:{port}/{database}"
+from mtd.db_url import db_url
 
 
 def build_workflow() -> Workflow:
@@ -20,7 +14,6 @@ def build_workflow() -> Workflow:
         display_name="Cool Graph",
         meta={"kind": "example", "shape": "fanout-diamond-merge"},
     )
-
     
     ingest = workflow.add_task("ingest", "YesNoDecision", "Ingest Raw Events", group="input")
     profile = workflow.add_task("profile", "YesNoDecision", "Profile Inputs", group="quality")

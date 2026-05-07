@@ -91,7 +91,7 @@ class TaskMixin:
         self._peer = _peer
         return _peer
 
-    def __getattr__(self: TaskMixin, name: str):
+    def x__getattr__(self: TaskMixin, name: str):
         if name.startswith("_"):
             raise AttributeError(name)
 
@@ -144,6 +144,8 @@ class TaskMixin:
 class RelationMixin:
 
     def satisfied(self: Relation) -> bool:
+        print("TEST SATISFIED", self.workflow_source)
+        print("TEST SATISFIED", self.kind)
         predicate = getattr(self.workflow_source, self.kind)
         return bool(predicate())
 

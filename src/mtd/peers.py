@@ -7,6 +7,11 @@ from .models import Task, JobState
 
 class TaskPeer:
 
+    WATCHER  = False
+    MANUAL   = False
+    PROCESS  = False
+    COMPLETE = False
+
     def __init__(self, peer: Task):
         self._peer = peer
         return
@@ -38,14 +43,31 @@ class Watcher(TaskPeer):
     pass
 
 
-class JobRunner(TaskPeer):
+class ManualProcess(TaskPeer):
 
-    WATCHER = False
+    MANUAL = True
+
+    def start(self):
+        self._peer.set_state(TaskState.RUNNING)
+
+    def complete(self):
+        self._peer.set_state(TaskState.DONE)
+
+    def block(self, reason=None):
+        self._peer.meta = {**self._peer.meta, "blocked_reason": reason}
+        self._peer.set_state(TaskState.BLOCKED)
+    
+    pass
+
+
+class Process(TaskPeer):
+
+    PROCESS  = False
 
     pass
 
 
-class MakeTask(JobRunner):
+class MakeProcess(Process):
     '''
     use celery to run "make <task_id>"
     '''
@@ -154,7 +176,9 @@ class All(Watcher):
 class Complete(All):
 
     STYLE = 'double circle'
-        
+
+    COMPLETE = True
+
     pass
 
 

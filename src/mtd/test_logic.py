@@ -50,7 +50,7 @@ def test_file_exists() -> None:
 
 def test_make_task_result_predicates() -> None:
     workflow = Workflow(id="make_probe")
-    task = workflow.add_task("build", "MakeTask")
+    task = workflow.add_task("build", "MakeProcess")
 
     assert task.success() is False
     assert task.failure() is False
