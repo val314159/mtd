@@ -21,11 +21,6 @@ exec:
 kill:
 	docker exec -it mtd killall -9 supervisord
 
-gen: models.py
-
-models.py:
-	sh src/scripts/generate.sh src/mtd/models.py workflows tasks jobs
-
 clean:
 	rm -fr *.log
 	find . -name    \*~  | xargs rm -fr
@@ -39,9 +34,4 @@ realclean: clean
 	rm -fr mtd-pgdata uv.lock models.py
 	find . -name __pycache__ | xargs rm -fr
 	find . -name .v\*        | xargs rm -fr
-	tree -I .git -I .kelvin -asF
-
-test:
-	docker exec mtd python -m mtd.models
-	docker exec mtd python -m mtd.test_logic
-	docker exec mtd python -m better_example
+	tree -I .git -I .kelvin -I old.src -asF

@@ -2,7 +2,7 @@ FROM alpine:latest
 RUN apk add --no-cache \
     tini nginx supervisor python3 py3-pip py-virtualenv \
     make postgresql postgresql-contrib postgresql-client
-RUN pip install --break-system-packages \
+RUN pip install --break-system-packages --no-cache \
     celery psycopg2-binary kombu sqlalchemy
 RUN echo >>/root/.profile 'alias ll="ls -la"'
 RUN echo >>/root/.profile 'alias gen="generate.sh src/mtd/models.py workflows tasks relations jobs"'
@@ -51,19 +51,18 @@ if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
 fi
 exec supervisord -c /etc/supervisord.conf
 SH
+ENV CELERY_APP=mtd.worker
+ENV CELERY_LOG_LEVEL=info
 RUN cat > /etc/supervisord.conf <<'CONF'
 [supervisord]
 nodaemon=true
 user=root
-#[program:nginx]
-#command=nginx -g "daemon off;"
-#autorestart=true
+[program:nginx]
+command=nginx -g "daemon off;"
 [program:celery-worker]
-command=su app -s /bin/sh -c "celery -A mtd.celery_app worker --loglevel=info"
-autorestart=true
+command=su app -s /bin/sh -c "celery worker"
 [program:celery-beat]
-command=su app -s /bin/sh -c "celery -A mtd.celery_app   beat --loglevel=info"
-autorestart=true
+command=su app -s /bin/sh -c "celery beat"
 CONF
 RUN    adduser -D -h /app app
 COPY             src /app/src
