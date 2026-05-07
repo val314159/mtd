@@ -6,6 +6,10 @@ class PeerTask:
     WATCHER = False
     PROCESS = False
     COMPLETE = False
+
+    def __init__(self, rec):
+        self.rec = rec
+
     pass
 
 
