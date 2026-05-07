@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-def PeerTask:
+class PeerTask:
     MANUAL = False
     WATCHER = False
     PROCESS = False
@@ -9,11 +9,21 @@ def PeerTask:
     pass
 
 
-def ManualTask(PeerTask):
+class ManualTask(PeerTask):
     MANUAL = True
     pass
 
 
-def CompleteTask(PeerTask):
+class WatcherTask(PeerTask):
+    WATCHER = True
+    pass
+
+
+class ProcessTask(PeerTask):
+    PROCESS = True
+    pass
+
+
+class CompleteTask(PeerTask):
     COMPLETE = True
     pass

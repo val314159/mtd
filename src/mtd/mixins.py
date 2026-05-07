@@ -7,8 +7,8 @@ class WorkflowMixin:
 class TaskMixin:
     @property
     def peer(self):
-        import tasks
-        name = 'ManualTask'
+        from mtd import tasks
+        name = f'{self.python_class}Task'
         return getattr(tasks, name)(self)
     pass
 
