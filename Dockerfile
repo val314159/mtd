@@ -22,6 +22,7 @@ RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/
  && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" $NGINX_CONF \
  && sed -i -E "s/listen[[:space:]]+443([[:space:]]+ssl[[:space:];])/listen ${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF \
  && sed -i -E "s/listen[[:space:]]+\\[::\\]:443([[:space:]]+ssl[[:space:];])/listen [::]:${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF
+ && sed -i -E 's!127.0.0.1/32!all!g' /usr/share/postgresql/pg_hba.conf.sample
 RUN mkdir -p             /run/nginx /var/lib/nginx /var/log/nginx \
  && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 RUN mkdir -p                   /var/run/postgresql /var/lib/postgresql/data \
@@ -40,7 +41,7 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
   su  postgres -c "initdb -D '$PGDATA'"
 fi
 su postgres -c "pg_ctl -D '$PGDATA' -w -l /var/lib/postgresql/logfile \
-  -o '-c listen_addresses=$PGHOST -p $PGPORT' start"
+  -o '-c listen_addresses=0.0.0.0 -p $PGPORT' start"
 if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
   p_sql postgres postgres -c "CREATE USER \"$PGUSER\";"
   p_sql postgres postgres -c "CREATE DATABASE \"$PGDATABASE\" OWNER \"$PGUSER\";"
@@ -73,4 +74,4 @@ RUN cp src/sql/* /docker-entrypoint-initdb.d/
 RUN cp src/scripts/* /usr/local/bin
 ENTRYPOINT ["tini"]
 CMD ["mtd-launch"]
-EXPOSE $NGINX_HTTP_PORT $NGINX_HTTPS_PORT $POSTGRES_PORT
+EXPOSE 5432

@@ -1,6 +1,7 @@
 .PHONY: docker sh exec kill all gen clean realclean test build
 
-D=--name mtd -v`pwd`:`pwd` -v `pwd`/mtd-pgdata:/var/lib/postgresql/data
+D=--name=mtd -p127.0.0.1:5432:5432 \
+	-v`pwd`:`pwd` -v`pwd`/mtd-pgdata:/var/lib/postgresql/data
 
 docker: .docker-build-mtd.stamp
 	docker run  -it --rm $D mtd || rm -fr mtd-pgdata
