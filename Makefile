@@ -1,13 +1,16 @@
-.PHONY: docker sh exec kill all gen clean realclean test build
+.PHONY: docker-fg docker-bg sh exec kill all gen clean realclean test build
 
-D=--name=mtd -p127.0.0.1:5432:5432 \
+D=--name=mtd -p127.0.0.1:5432:5432 -d \
 	-v`pwd`:`pwd` -v`pwd`/mtd-pgdata:/var/lib/postgresql/data
 
-docker: .docker-build-mtd.stamp
-	docker run  -it --rm $D mtd || rm -fr mtd-pgdata
+docker-fg: .docker-build-mtd.stamp
+	docker run -it --rm $D mtd || rm -fr mtd-pgdata
+
+docker-bg: .docker-build-mtd.stamp
+	docker run -d  --rm $D mtd
 
 sh: .docker-build-mtd.stamp
-	docker run  -it --rm $D -w`pwd` mtd sh --login
+	docker run -it --rm $D -w`pwd` mtd sh --login
 
 .docker-build-mtd.stamp: Dockerfile src build
 	touch $@
