@@ -22,7 +22,7 @@ RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/
  && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" $NGINX_CONF \
  && sed -i -E "s/listen[[:space:]]+443([[:space:]]+ssl[[:space:];])/listen ${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF \
  && sed -i -E "s/listen[[:space:]]+\\[::\\]:443([[:space:]]+ssl[[:space:];])/listen [::]:${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF
- && sed -i -E 's!127.0.0.1/32!all!g' /usr/share/postgresql/pg_hba.conf.sample
+RUN sed -i -E 's!127.0.0.1/32!all!g' /usr/share/postgresql/pg_hba.conf.sample
 RUN mkdir -p             /run/nginx /var/lib/nginx /var/log/nginx \
  && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 RUN mkdir -p                   /var/run/postgresql /var/lib/postgresql/data \
