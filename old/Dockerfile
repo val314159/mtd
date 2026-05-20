@@ -2,10 +2,10 @@ FROM alpine:latest
 RUN apk add --no-cache \
     tini nginx supervisor python3 py3-pip py-virtualenv \
     make postgresql postgresql-contrib postgresql-client
-RUN pip install --break-system-packages \
+RUN pip install --break-system-packages --no-cache \
     celery psycopg2-binary kombu sqlalchemy
-RUN echo 'alias ll="ls -la"' >/root/.profile
-RUN adduser -D -h /app app
+RUN echo >>/root/.profile 'alias ll="ls -la"'
+RUN echo >>/root/.profile 'alias gen="generate.sh src/mtd/models.py workflows tasks relations jobs"'
 ARG NGINX_HTTP_PORT=8080
 ARG NGINX_HTTPS_PORT=1443
 ARG POSTGRES_PORT=5432
@@ -22,6 +22,7 @@ RUN sed -i -E "s/listen[[:space:]]+80([[:space:];])/listen ${NGINX_HTTP_PORT}\1/
  && sed -i -E "s/listen[[:space:]]+\\[::\\]:80([[:space:];])/listen [::]:${NGINX_HTTP_PORT}\1/g" $NGINX_CONF \
  && sed -i -E "s/listen[[:space:]]+443([[:space:]]+ssl[[:space:];])/listen ${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF \
  && sed -i -E "s/listen[[:space:]]+\\[::\\]:443([[:space:]]+ssl[[:space:];])/listen [::]:${NGINX_HTTPS_PORT}\1/g" $NGINX_CONF
+RUN sed -i -E 's!127.0.0.1/32!all!g' /usr/share/postgresql/pg_hba.conf.sample
 RUN mkdir -p             /run/nginx /var/lib/nginx /var/log/nginx \
  && chown -R nginx:nginx /run/nginx /var/lib/nginx /var/log/nginx
 RUN mkdir -p                   /var/run/postgresql /var/lib/postgresql/data \
@@ -40,7 +41,7 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
   su  postgres -c "initdb -D '$PGDATA'"
 fi
 su postgres -c "pg_ctl -D '$PGDATA' -w -l /var/lib/postgresql/logfile \
-  -o '-c listen_addresses=$PGHOST -p $PGPORT' start"
+  -o '-c listen_addresses=0.0.0.0 -p $PGPORT' start"
 if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
   p_sql postgres postgres -c "CREATE USER \"$PGUSER\";"
   p_sql postgres postgres -c "CREATE DATABASE \"$PGDATABASE\" OWNER \"$PGUSER\";"
@@ -51,26 +52,26 @@ if [ ! -f "$PGDATA/.mtd-init-complete" ]; then
 fi
 exec supervisord -c /etc/supervisord.conf
 SH
+ENV CELERY_APP=mtd.worker
+ENV CELERY_LOG_LEVEL=info
 RUN cat > /etc/supervisord.conf <<'CONF'
 [supervisord]
 nodaemon=true
 user=root
-#[program:nginx]
-#command=nginx -g "daemon off;"
-#autorestart=true
+[program:nginx]
+command=nginx -g "daemon off;"
 [program:celery-worker]
-command=su app -s /bin/sh -c "celery -A mtd.celery_app worker --loglevel=info"
-autorestart=true
+command=su app -s /bin/sh -c "celery worker"
 [program:celery-beat]
-command=su app -s /bin/sh -c "celery -A mtd.celery_app   beat --loglevel=info"
-autorestart=true
+command=su app -s /bin/sh -c "celery beat"
 CONF
-COPY src  /app/src
-COPY sql  /app/sql
-WORKDIR   /app
+RUN    adduser -D -h /app app
+COPY             src /app/src
+WORKDIR              /app
 RUN chown -R app:app /app
-RUN mkdir -p /docker-entrypoint-initdb.d/
-RUN cp sql/* /docker-entrypoint-initdb.d/
+RUN mkdir -p     /docker-entrypoint-initdb.d/
+RUN cp src/sql/* /docker-entrypoint-initdb.d/
+RUN cp src/scripts/* /usr/local/bin
 ENTRYPOINT ["tini"]
 CMD ["mtd-launch"]
-EXPOSE $NGINX_HTTP_PORT $NGINX_HTTPS_PORT $POSTGRES_PORT
+EXPOSE 5432
