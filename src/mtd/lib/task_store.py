@@ -17,7 +17,8 @@ KNOWN_FIELDS = {
     "depends_on",
     "dependants",
 }
-DEFAULT_DB = "~/.mtd-llm/tasks.sqlite3"
+UUID = os.getenv("UUID", "tasks")
+DEFAULT_DB = f"~/.mtd-llm/{UUID}.sqlite3"
 SEED_FILE = "data.json"
 
 
