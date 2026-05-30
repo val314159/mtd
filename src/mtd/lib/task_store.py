@@ -20,6 +20,14 @@ KNOWN_FIELDS = {
 UUID = os.getenv("UUID", "tasks")
 DEFAULT_DB = f"~/.mtd-llm/{UUID}.sqlite3"
 SEED_FILE = "data.json"
+PUBSUB_URL = os.getenv("MTD_PUBSUB_URL", "ws://localhost:5002/ws")
+PUBSUB_CHANNEL = os.getenv("MTD_PUBSUB_CHANNEL", "mtd-events")
+PUBSUB_SECRET = os.getenv("MTD_PUBSUB_SECRET") or os.getenv("INTERNAL_SECRET", "dev-secret")
+PUBSUB_STRICT = os.getenv("MTD_PUBSUB_STRICT", "").lower() in {"1", "true", "yes", "on"}
+
+
+def pubsub_enabled():
+    return os.getenv("MTD_PUBSUB", "").lower() in {"1", "true", "yes", "on"}
 
 
 def db_path():
@@ -83,7 +91,7 @@ def seed_if_empty(con):
             task.pop("relations", None)
             task.pop("depends_on", None)
             task.pop("dependants", None)
-            create_task(con, task, task_id=row.get("id"))
+            create_task(con, task, task_id=row.get("id"), publish=False)
         except sqlite3.IntegrityError:
             pass
     for row in rows:
@@ -297,7 +305,37 @@ def next_task_id(con):
     return f"task-{max_num + 1:02d}"
 
 
-def create_task(con, payload, task_id=None):
+def publish_event(event, task, **extra):
+    if not pubsub_enabled():
+        return
+    try:
+        import websocket
+
+        msg = {
+            "method": "pub",
+            "params": {
+                "channel": PUBSUB_CHANNEL,
+                "content": "mtd.event",
+                "event": event,
+                "uuid": UUID,
+                "task_id": task.get("id"),
+                "task": task,
+                **extra,
+            },
+        }
+        ws = websocket.WebSocket()
+        try:
+            ws.connect(PUBSUB_URL, header={"X-Internal-Secret": PUBSUB_SECRET})
+            ws.send(PUBSUB_CHANNEL)
+            ws.send(json.dumps(msg, sort_keys=True))
+        finally:
+            ws.close()
+    except Exception:
+        if PUBSUB_STRICT:
+            raise
+
+
+def create_task(con, payload, task_id=None, publish=True):
     payload = dict(payload)
     task, meta = split_task(payload)
     relations = task.pop("relations", [])
@@ -325,10 +363,12 @@ def create_task(con, payload, task_id=None):
     append_depends_on(con, task_id, depends_on)
     append_dependants(con, task_id, dependants)
     con.commit()
+    if publish:
+        publish_event("task.created", get_task(con, task_id))
     return task_id
 
 
-def update_task(con, payload):
+def update_task(con, payload, publish=True):
     task_id = payload.get("id")
     if not task_id:
         raise ValueError("update_task requires id")
@@ -337,7 +377,8 @@ def update_task(con, payload):
     if row is None:
         raise ValueError(f"task not found: {task_id}")
 
-    current = row_to_task(row)
+    previous = row_to_task(row)
+    current = dict(previous)
     for key, value in payload.items():
         if key == "id":
             continue
@@ -393,6 +434,14 @@ def update_task(con, payload):
         ),
     )
     con.commit()
+    if publish:
+        task = get_task(con, task_id)
+        event = (
+            "task.completed"
+            if previous.get("state") != "DONE" and task.get("state") == "DONE"
+            else "task.updated"
+        )
+        publish_event(event, task, previous_state=previous.get("state"))
 
 
 def read_payload():
